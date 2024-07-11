@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"log"
 	"os"
 
 	"github.com/go-redis/redis/v8"
@@ -19,7 +18,6 @@ func CreateClient(dbNo int) *redis.Client {
 		Password: os.Getenv("DB_PASS"),
 		DB:       dbNo,
 	})
-	log.Println("Redis is Connected")
 	return rdb
 }
 

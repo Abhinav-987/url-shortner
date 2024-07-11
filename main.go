@@ -12,6 +12,13 @@ import (
 func main() {
 	database.InitializeClient()
 
+	_, err := database.Client.Ping(database.Ctx).Result()
+	if err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+
+	log.Println("Connected to Redis successfully")
+
 	router := gin.Default()
 
 	setupRouters(router)
