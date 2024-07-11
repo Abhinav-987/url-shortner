@@ -24,16 +24,13 @@ func ShortenURL(c *gin.Context) {
 		return
 	}
 
-	r2 := database.CreateClient(1)
-	defer r2.Close()
-
 	clientIP := c.ClientIP()
 
 	// Log the initial API quota and ClientIP
 	apiQuota := os.Getenv("API_QUOTA")
 	log.Printf("API_QUOTA: %s, ClientIP: %s", apiQuota, clientIP)
 
-	val, err := r2.Get(database.Ctx, clientIP).Result()
+	val, err := database.Client.Get(database.Ctx, clientIP).Result()
 	if err != nil && err != redis.Nil {
 		log.Printf("Error getting rate limit for %s: %v", clientIP, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
@@ -46,7 +43,7 @@ func ShortenURL(c *gin.Context) {
 			apiQuota = "10" // Default to 10 if not set
 		}
 		log.Printf("Setting initial quota for %s: %s", clientIP, apiQuota)
-		err = r2.Set(database.Ctx, clientIP, apiQuota, 30*60*time.Second).Err()
+		err = database.Client.Set(database.Ctx, clientIP, apiQuota, 30*60*time.Second).Err()
 		if err != nil {
 			log.Printf("Error setting initial quota for %s: %v", clientIP, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
@@ -59,7 +56,7 @@ func ShortenURL(c *gin.Context) {
 	log.Printf("Current rate limit for %s: %d", clientIP, valInt)
 
 	if valInt <= 0 {
-		limit, _ := r2.TTL(database.Ctx, clientIP).Result()
+		limit, _ := database.Client.TTL(database.Ctx, clientIP).Result()
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error":            "rate limit exceeded",
 			"rate_limit_reset": limit / time.Nanosecond / time.Minute,
@@ -117,12 +114,12 @@ func ShortenURL(c *gin.Context) {
 		CustomShort:     "",
 	}
 
-	r2.Decr(database.Ctx, c.ClientIP())
+	database.Client.Decr(database.Ctx, c.ClientIP())
 
-	val, _ = r2.Get(database.Ctx, c.ClientIP()).Result()
+	val, _ = database.Client.Get(database.Ctx, c.ClientIP()).Result()
 	resp.XRateRemaining, _ = strconv.Atoi(val)
 
-	ttl, _ := r2.TTL(database.Ctx, c.ClientIP()).Result()
+	ttl, _ := database.Client.TTL(database.Ctx, c.ClientIP()).Result()
 	resp.XRateLimitReset = ttl / time.Nanosecond / time.Minute
 
 	resp.CustomShort = os.Getenv("DOMAIN") + "/" + id
