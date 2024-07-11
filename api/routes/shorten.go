@@ -27,25 +27,46 @@ func ShortenURL(c *gin.Context) {
 	r2 := database.CreateClient(1)
 	defer r2.Close()
 
-	log.Printf("API_QUOTA: %s, ClientIP: %s", os.Getenv("API_QUOTA"), c.ClientIP())
+	clientIP := c.ClientIP()
 
-	_, err := r2.Get(database.Ctx, c.ClientIP()).Result()
+	// Log the initial API quota and ClientIP
+	apiQuota := os.Getenv("API_QUOTA")
+	log.Printf("API_QUOTA: %s, ClientIP: %s", apiQuota, clientIP)
+
+	val, err := r2.Get(database.Ctx, clientIP).Result()
+	if err != nil && err != redis.Nil {
+		log.Printf("Error getting rate limit for %s: %v", clientIP, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		return
+	}
+	log.Printf("Rate limit value for %s: %s", clientIP, val)
 
 	if err == redis.Nil {
-		_ = r2.Set(database.Ctx, c.ClientIP(), os.Getenv("API_QUOTA"), 30*60*time.Second).Err()
-	} else {
-		val, _ := r2.Get(database.Ctx, c.ClientIP()).Result()
-		valInt, _ := strconv.Atoi(val)
-
-		if valInt <= 0 {
-			limit, _ := r2.TTL(database.Ctx, c.ClientIP()).Result()
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error":            "rate limit exceeded",
-				"rate_limit_reset": limit / time.Nanosecond / time.Minute,
-			})
+		if apiQuota == "" {
+			apiQuota = "10" // Default to 10 if not set
+		}
+		log.Printf("Setting initial quota for %s: %s", clientIP, apiQuota)
+		err = r2.Set(database.Ctx, clientIP, apiQuota, 30*60*time.Second).Err()
+		if err != nil {
+			log.Printf("Error setting initial quota for %s: %v", clientIP, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 			return
 		}
+		val = apiQuota
 	}
+
+	valInt, _ := strconv.Atoi(val)
+	log.Printf("Current rate limit for %s: %d", clientIP, valInt)
+
+	if valInt <= 0 {
+		limit, _ := r2.TTL(database.Ctx, clientIP).Result()
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":            "rate limit exceeded",
+			"rate_limit_reset": limit / time.Nanosecond / time.Minute,
+		})
+		return
+	}
+
 	if !govalidator.IsURL(body.URL) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
@@ -68,7 +89,7 @@ func ShortenURL(c *gin.Context) {
 		id = body.CustomShort
 	}
 
-	val, _ := database.Client.Get(database.Ctx, id).Result()
+	val, _ = database.Client.Get(database.Ctx, id).Result()
 	if val != "" {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "URL Custom Short Already Exists",
