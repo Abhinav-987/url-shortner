@@ -1,22 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
 	"github.com/Abhinav-987/url-shortner/api/database"
 	"github.com/Abhinav-987/url-shortner/api/routes"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println(err)
-	}
-
 	database.InitializeClient()
 
 	router := gin.Default()
