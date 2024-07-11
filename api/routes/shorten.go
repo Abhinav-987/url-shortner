@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -25,6 +26,8 @@ func ShortenURL(c *gin.Context) {
 
 	r2 := database.CreateClient(1)
 	defer r2.Close()
+
+	log.Printf("API_QUOTA: %s, ClientIP: %s", os.Getenv("API_QUOTA"), c.ClientIP())
 
 	_, err := r2.Get(database.Ctx, c.ClientIP()).Result()
 
