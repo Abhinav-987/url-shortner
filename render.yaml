@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: url-shortener
+    env: docker
+    repo: github.com/Abhinav-987/url-shortner
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    buildCommand: docker build .
+    startCommand: /project/go-docker/build/myapp
