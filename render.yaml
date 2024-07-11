@@ -5,5 +5,11 @@ services:
     repo: github.com/Abhinav-987/url-shortner
     region: oregon
     dockerfilePath: ./Dockerfile
-    buildCommand: docker build .
+    buildCommand: docker build -t url-shortener .
     startCommand: /project/go-docker/build/myapp
+
+databases:
+  - name: redis
+    type: redis
+    region: oregon
+    plan: free
