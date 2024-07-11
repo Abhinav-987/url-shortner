@@ -16,11 +16,6 @@ services:
       - "8000:8000"
     depends_on:
       - db
-    # environment:
-    #   - REDIS_HOST=db
-    #   - REDIS_PORT=6379
-    #   - DB_ADDR = "db:6379"
-    #   - DB_PASS = ""
-    #   - APP_PORT = "8000"
-    #   - DOMAIN = "localhost:8000"
-    #   - API_QUOTA = 10
+    environment:
+      - REDIS_HOST=db
+      - REDIS_PORT=6379
